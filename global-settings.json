@@ -1,0 +1,10 @@
+{
+  "_comment": "This file goes to ~/.claude/settings.json (your home directory)",
+  "env": {
+    "ANTHROPIC_AUTH_TOKEN": "<YOUR_API_KEY_HERE>",
+    "ANTHROPIC_BASE_URL": "<YOUR_API_BASE_URL_HERE>"
+  },
+  "model": "sonnet",
+  "effortLevel": "medium",
+  "includeCoAuthoredBy": false
+}
