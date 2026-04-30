@@ -63,11 +63,16 @@ DANGEROUS_PATTERNS = [
      "curl with sensitive file"),
     (r"curl\s+.*-d\s+.*(\$\{?[A-Z_]*(TOKEN|KEY|SECRET|PASSWORD|CREDENTIAL)[A-Z_]*\}?)",
      "curl posting secrets"),
+
+    # --- Package/supply chain ---
+    (r"\bpip\s+install\s+--index-url\s+(?!https://pypi\.org)",
+     "pip install from non-PyPI source"),
+    (r"\bnpm\s+publish\b",
+     "npm publish (accidental package publish)"),
 ]
 
-# Token-expensive patterns: (regex, reason, suggested_fix)
 TOKEN_WASTE_PATTERNS = [
-    (r"\bcat\s+.+\.(log|csv|sql|dump|dat|tsv|parquet)\b",
+    (r"\bcat\s+.+\.(log|csv|sql|dump|dat|tsv|parquet|json|xml)\b",
      "cat on likely large data file — use head/tail instead",
      "Use: head -100 <file> or tail -100 <file>"),
     (r"\bcat\s+.+\bnode_modules\b",
@@ -88,6 +93,12 @@ TOKEN_WASTE_PATTERNS = [
     (r"\bdocker\s+logs\b(?!.*--tail)",
      "docker logs without --tail — may dump entire log",
      "Add --tail 100"),
+    (r"\bpip\s+list\b.*\|?\s*$",
+     "pip list dumps all packages — usually unnecessary",
+     "Use: pip show <package> for specific info"),
+    (r"\btree\b(?!.*-L\s)",
+     "tree without depth limit — may produce huge output",
+     "Add -L 3 to limit depth"),
 ]
 
 

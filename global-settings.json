@@ -1,10 +1,19 @@
 {
-  "_comment": "This file goes to ~/.claude/settings.json (your home directory)",
+  "_comment_1": "Copy this file to ~/.claude/settings.json",
+  "_comment_2": "Windows: C:\\Users\\<username>\\.claude\\settings.json",
+  "_comment_3": "Mac/Linux: ~/.claude/settings.json",
+
+  "_comment_env": "API proxy users: fill in your key and URL below. Max plan users: delete the entire 'env' block.",
   "env": {
-    "ANTHROPIC_AUTH_TOKEN": "<YOUR_API_KEY_HERE>",
-    "ANTHROPIC_BASE_URL": "<YOUR_API_BASE_URL_HERE>"
+    "ANTHROPIC_AUTH_TOKEN": "<YOUR_API_KEY>",
+    "ANTHROPIC_BASE_URL": "<YOUR_API_URL>"
   },
+
+  "_comment_model": "Options: opus, sonnet, haiku. Append [1m] for 1M context (e.g. opus[1m]). Default: sonnet",
   "model": "sonnet",
+
+  "_comment_effort": "Options: low, medium, high. Controls how much effort Claude puts into responses. Default: medium",
   "effortLevel": "medium",
+
   "includeCoAuthoredBy": false
 }
