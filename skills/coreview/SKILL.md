@@ -1,0 +1,184 @@
+---
+name: coreview
+description: Coordinate multi-agent code review and fix loops between Codex, Claude Code, or another coding agent. Use when the user asks for /coreview, /co-review, coreview, co-review, counter-review, cross-agent review, dual-agent review, "针对 ... 进行 coreview", "双 agent 互审", "跨 agent 复审", "让 Claude 和 Codex 一起 review", or wants two agents to converge on code fixes with Critical findings shown to the user first, append-only review logs, local verification, final gate, and human audit checklist.
+---
+
+# Coreview
+
+## Purpose
+
+Run an append-only, multi-agent review loop that lets two coding agents independently inspect, fix, counter-review, and converge without losing the human decision points. Treat this as a protocol, not a fully autonomous runtime.
+
+Use project-local `reviews/` files as the source of truth. Use `reviews/.coreview/` for machine-readable state.
+
+## Required User Update
+
+If `AGENTS.md` mandates a preface format, follow it. Otherwise start directly. State which project/scope you are reviewing and that Critical findings will be shown before fixes.
+
+## Directory Contract
+
+Use these files under the project root:
+
+```text
+reviews/
+  README.md
+  YYYY-MM-DD_<scope>.md
+  .coreview/
+    state.json
+    claims.json
+    CRITICAL_AWAITING_USER.md
+    decisions.md
+    activity.log
+```
+
+Create them with `scripts/coreview_state.py init --scope <scope> --agent <agent-id>` when missing. If the script is not available, create the same files manually.
+
+## Severity Gates
+
+Classify every finding before fixing:
+
+- **Hard Critical**: security/data loss/production deployment/irreversible migration/auth boundary. Stop automatic code edits, write `CRITICAL_AWAITING_USER.md`, summarize to the user, and wait for explicit approval or rejection.
+- **Soft Critical**: API compatibility, schema change, large behavior change, or high blast radius. Continue unrelated non-critical work, but do not fix that item until the user approves.
+- **Important**: fix or defer with rationale; peer review required.
+- **Minor**: fix when low-risk and local; otherwise record.
+
+Never bury Critical decisions inside a long review file. Surface them in chat and in `CRITICAL_AWAITING_USER.md`.
+
+## Core Loop
+
+1. **Initialize**
+   - Read `AGENTS.md`, project review workflow, `reviews/README.md`, and current `git status`.
+   - Reuse the same review file for same date/scope.
+   - Initialize `.coreview` state.
+
+2. **Independent Review**
+   - Inspect code and write findings to the review file.
+   - Include concrete `file:line` references.
+   - Do not fix Hard Critical findings before user approval.
+
+3. **Claim Work**
+   - Before editing, claim each non-critical item in `claims.json`.
+   - Include `files: list[str]`; the state script rejects overlapping active claims by another agent.
+   - Do not edit files already claimed by the peer unless the claim is stale and you record why.
+   - Keep claims narrow: finding id, files, owner, status.
+
+4. **Fix Pass**
+   - Apply targeted fixes.
+   - Append fix implementation notes; do not only tick checkboxes.
+   - Preserve unrelated user/peer changes.
+
+5. **Counter-review**
+   - Read the peer's latest appended section and current diff.
+   - Accept, reject, or add blockers with concrete locations.
+   - Answer any explicit peer questions.
+
+6. **Verification**
+   - Run local verification appropriate to the stack.
+   - At minimum for Python: `python -m py_compile` over touched app files.
+   - Run tests when collection is expected to work.
+   - Record exact commands and results in the review file.
+
+7. **Final Gate**
+   - Update `reviews/README.md`.
+   - Final statuses:
+     - `Not approved for sync`
+     - `Approved for local-to-server sync`
+     - `Approved for next local batch`
+   - Include human audit checklist when sync/deploy is next.
+
+## Polling / Continue Mode
+
+When the user says `/coreview continue`, `coreview`, `co-review`, or asks you to check again:
+
+1. Read `reviews/.coreview/state.json`, `claims.json`, review tail, and `git status`.
+2. If `CRITICAL_AWAITING_USER.md` has unresolved Hard Critical items, do not edit code. Summarize the pending decisions.
+3. If the peer appended new fixes/review since your last section, counter-review them.
+4. If no new peer work exists, run verification and update the gate if the state changed.
+5. Before final response, read the review file tail one more time to catch concurrent peer writes.
+
+Thirty-second polling can be simulated by repeated invocations. Do not start a background daemon unless the user explicitly asks.
+
+## State Script
+
+Use `scripts/coreview_state.py` for mechanical state operations:
+
+```bash
+python <skill>/scripts/coreview_state.py init --scope security-hardening --agent codex
+python <skill>/scripts/coreview_state.py status
+python <skill>/scripts/coreview_state.py claim --id I1 --agent codex --files backend/app/api/match.py
+python <skill>/scripts/coreview_state.py prune --agent codex --max-age 30m
+python <skill>/scripts/coreview_state.py critical --id C1 --severity hard --agent codex --title "Weak production secret"
+python <skill>/scripts/coreview_state.py resolve-critical --id C1 --decision approve --agent human
+python <skill>/scripts/coreview_state.py new-round --agent codex --phase counter_review
+python <skill>/scripts/coreview_state.py gate --status "Approved for local-to-server sync" --agent codex
+```
+
+Prefer the script for JSON updates. If another agent uses YAML, preserve its file and also keep the JSON state current; the review markdown remains authoritative for humans.
+
+## Review Section Templates
+
+Use concise append-only sections:
+
+```markdown
+## Review - <Agent> - <date>
+
+### Critical
+- [ ] **[file:line]** Description - why it matters -> fix: suggestion
+
+### Important
+- [ ] **[file:line]** Description
+
+### Verification
+- Not run yet.
+```
+
+```markdown
+## Fix Pass - <Agent> - <date>
+
+### Applied
+- [x] **ID** Files changed and why
+
+### Deferred
+- [ ] **ID** Rationale and owner
+
+### Verification
+- `<command>`: passed/failed
+```
+
+```markdown
+## Co-review - <Agent> - <date>
+
+### Accepted
+- [x] **ID** Reason
+
+### Blocking
+- [ ] **[file:line]** Issue
+
+### Gate
+- Status: **Approved for local-to-server sync** / **Not approved for sync**
+```
+
+## Human Audit Checklist
+
+For a final approved sync/deploy gate, include:
+
+```markdown
+## Human Audit Checklist
+
+- [ ] Review all Hard Critical decisions and accepted deferrals.
+- [ ] Confirm production `.env` secrets are real non-placeholder values.
+- [ ] Confirm database migrations or data-impacting operations are backed up.
+- [ ] Confirm server backup path before overwriting remote files.
+- [ ] Confirm remote verification commands to run after sync.
+```
+
+## Design Notes
+
+Borrow useful ideas without importing a heavy runtime:
+
+- Hermes-style session lineage: keep round ids, parent ids, and sign-off table in the review file/state.
+- Hermes-style skill memory: after repeated successful runs, update this skill or project review conventions.
+- OpenClaw-style visible agent state: keep state files readable and small so the user can inspect progress.
+- OpenClaw-style guardrails: use explicit claims, Critical freeze, and human approval for risky actions.
+
+Do not add autonomous background agents, external services, or broad filesystem watchers unless the user asks. The default implementation must stay local, append-only, and auditable.

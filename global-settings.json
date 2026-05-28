@@ -1,19 +1,33 @@
 {
-  "_comment_1": "Copy this file to ~/.claude/settings.json",
-  "_comment_2": "Windows: C:\\Users\\<username>\\.claude\\settings.json",
-  "_comment_3": "Mac/Linux: ~/.claude/settings.json",
-
-  "_comment_env": "API proxy users: fill in your key and URL below. Max plan users: delete the entire 'env' block.",
+  "_comment": "This file goes to ~/.claude/settings.json (your home directory)",
   "env": {
-    "ANTHROPIC_AUTH_TOKEN": "<YOUR_API_KEY>",
-    "ANTHROPIC_BASE_URL": "<YOUR_API_URL>"
+    "ANTHROPIC_AUTH_TOKEN": "<YOUR_API_KEY_HERE>",
+    "ANTHROPIC_BASE_URL": "<YOUR_API_BASE_URL_HERE>"
   },
-
-  "_comment_model": "Options: opus, sonnet, haiku. Append [1m] for 1M context (e.g. opus[1m]). Default: sonnet",
-  "model": "sonnet",
-
-  "_comment_effort": "Options: low, medium, high. Controls how much effort Claude puts into responses. Default: medium",
-  "effortLevel": "medium",
-
-  "includeCoAuthoredBy": false
+  "theme": "dark-daltonized",
+  "effortLevel": "high",
+  "includeCoAuthoredBy": false,
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -Command \"$d=Get-Date -Format 'yyyy-MM-dd ddd HH:mm'; $b=(git rev-parse --abbrev-ref HEAD 2>$null); if($b){Write-Output \\\"[ctx] $d | branch: $b\\\"}else{Write-Output \\\"[ctx] $d\\\"}\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -Command \"$j=$input|Out-String|ConvertFrom-Json; $f=$j.tool_input.file_path; if($f -and $f -match '\\.py$' -and (Test-Path $f)){& 'python' -m black -q $f 2>$null}\""
+          }
+        ]
+      }
+    ]
+  }
 }
