@@ -39,6 +39,14 @@ Use this in `CRITICAL_AWAITING_USER.md`:
 - [ ] reject / defer
 ```
 
+## Unattended Decision Policy
+
+- Agents may choose the safest reversible local code fix without user input.
+- Agents may defer product/infra/security decisions and keep working on unrelated safe items.
+- Agents must not perform server sync, deploy, secret rotation, database migration, destructive filesystem operations, or remote overwrites without explicit user approval.
+- If unattended mode ends with deferred Critical items, final gate cannot be `Approved for local-to-server sync`.
+- The final response must include what was decided automatically, what was deferred, and what still needs user approval.
+
 ## Final Checklist
 
 Before approval:
