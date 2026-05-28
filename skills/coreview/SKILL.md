@@ -112,18 +112,35 @@ When the user says `/coreview continue`, `coreview`, `co-review`, or asks you to
 4. If no new peer work exists, run verification and update the gate if the state changed.
 5. Before final response, read the review file tail one more time to catch concurrent peer writes.
 
-Thirty-second polling can be simulated by repeated invocations. Do not start a background daemon unless the user explicitly asks.
+Do not start a background daemon unless the user explicitly asks.
 
-Recommended unattended launch:
+### Unattended Launch
 
 ```text
-Claude Code: /loop 50s coreview continue
-Codex: run /coreview <scope> once, then use any available loop/continue mechanism; if no loop exists, the user can later say "coreview continue" and the shared files will preserve state.
+Claude Code: /loop coreview continue
+Codex: coreview <scope>   (then loop/continue if available)
 ```
 
-If both runtimes support a loop command and share the same working directory, start both loops and let them converge through the state files. If only one side supports loops, that side can keep counter-reviewing automatically while the other side advances on the next user-triggered continue.
+Use dynamic-paced `/loop` (no fixed interval). Both agents share `reviews/.coreview/` in the same working directory and converge through state files — no copy-paste relay needed.
 
-Each loop tick should:
+### Backoff Schedule
+
+Each tick, track consecutive idle rounds (no new peer content, no claimable work, no state change):
+
+| Idle count | Next delay | Action |
+|------------|-----------|--------|
+| 0 (active) | 50s | Normal pace |
+| 1 | 70s | Slowing down |
+| 2 | 90s | Final check |
+| 3 | — | Exit loop, output final status |
+
+Reset idle count to 0 whenever:
+- Peer appended new content to the review file
+- A new finding became claimable
+- A Hard Critical was resolved
+- Any file in the working tree changed since last tick
+
+### Each Tick Should
 
 1. Read `state.json`, `claims.json`, `CRITICAL_AWAITING_USER.md`, and the review tail.
 2. Run `prune --max-age 30m` before taking new claims.
@@ -132,6 +149,7 @@ Each loop tick should:
 5. If local safe work is available, claim and fix it.
 6. Run verification when the state reaches a candidate gate.
 7. Append a concise section only when something changed.
+8. Compute idle count and schedule next wakeup (or exit if idle ≥ 3).
 
 ## State Script
 
