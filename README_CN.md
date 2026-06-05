@@ -19,7 +19,7 @@ VSCode                                Obsidian
 共享基础设施
 ────────────
 ├── 5 个 MCP 服务器（fetch, time, playwright, gemini-search, firecrawl）
-├── 5 个自定义 skills（力扣复盘、论文笔记、录音转写、结构性学习、coreview 双 agent 互审）
+├── 7 个工作流 skills（计划/执行/调试/验证/代码审查闭环 + coreview 双 agent 互审）
 ├── 7 个斜杠命令（caveman, diagnose, grill-me, tdd, tidy, html-deck, pptx-design-supplement）
 ├── 3 个安全 hooks（bash 防护、写前思考、写后语法检查）
 ├── 自动记忆系统（跨会话持久化上下文）
@@ -32,13 +32,21 @@ VSCode                                Obsidian
 ├── CLAUDE.md                     # 项目指令模板
 ├── global-settings.json          # 全局配置模板（~/.claude/settings.json）
 ├── skills/
-│   └── coreview/                 # 双 agent 代码互审 skill
-│       ├── SKILL.md              # Skill 定义（触发词、协议、模板）
-│       ├── scripts/
-│       │   ├── coreview_state.py # 状态管理 CLI（init/claim/release/prune/critical/gate）
-│       │   └── install.py        # 跨平台安装（Windows junction / POSIX symlink）
-│       └── references/
-│           └── protocol.md       # 详细协议规范
+│   ├── coreview/                 # 双 agent 代码互审 skill
+│   │   ├── SKILL.md              # Skill 定义（触发词、协议、模板）
+│   │   ├── scripts/
+│   │   │   ├── coreview_state.py # 状态管理 CLI（init/claim/release/prune/critical/gate）
+│   │   │   └── install.py        # 跨平台安装（Windows junction / POSIX symlink）
+│   │   └── references/
+│   │       └── protocol.md       # 详细协议规范
+│   ├── writing-plans/            # 把规格拆成逐任务 TDD 计划
+│   ├── executing-plans/          # 按计划执行 + 检查点
+│   ├── systematic-debugging/     # 四阶段根因调试（先找根因再改）
+│   ├── verification-before-completion/  # 没跑过验证不准说"完成"
+│   ├── requesting-code-review/   # 派 reviewer 子 agent 审 git diff
+│   │   └── code-reviewer.md      # reviewer prompt 模板
+│   ├── receiving-code-review/    # 批判性评估审查意见，不盲从
+│   └── install_workflow_skills.py # 一键 junction 安装上面 6 个工作流 skill
 └── .claude/
     ├── settings.json             # 项目级权限 + hooks 配置
     └── scripts/
@@ -117,7 +125,7 @@ claude mcp add firecrawl -- npx -y firecrawl-mcp
 
 1. **三层安全防护** — 危险命令在 hook 层拦截（不只靠权限），token 浪费在烧上下文前就被捕获，语法在写入后立即验证
 2. **MCP 优于 shell** — 用 playwright 做浏览器测试、gemini 做搜索、firecrawl 做抓取。工具调用可见可审计，不会埋在 bash 里
-3. **Skills 封装可重复工作流** — 力扣复盘、论文笔记、结构性学习、录音转写。每个都封装了多步 SOP，不用每次重新解释
+3. **Skills 封装可重复工作流** — 一套覆盖"计划→执行→调试→验证→代码审查"的工作流 skill，加上 coreview 双 agent 互审。每个都封装了多步 SOP，不用每次重新解释
 4. **斜杠命令切模式** — `/caveman` 省 token 的简洁模式、`/grill-me` 设计拷问、`/tdd` 测试驱动流程。切模式不丢上下文
 5. **自动记忆保连续性** — 跨会话持久化记忆，分类型（user/feedback/project/reference）。消灭"上次我们做了什么来着"
 6. **权限白名单 + 黑名单** — 常用开发命令预放行减少弹窗疲劳；特定危险工具（file_upload）显式禁止
@@ -154,6 +162,35 @@ python skills/coreview/scripts/install.py
 - 原子 JSON 写入（不会出现半截文件）
 
 详见 [SKILL.md](skills/coreview/SKILL.md) 了解完整协议，[protocol.md](skills/coreview/references/protocol.md) 了解状态机细节。
+
+## 工作流 Skills — 计划/执行/调试/验证/审查闭环
+
+`skills/` 下另有 6 个工作流 skill，覆盖一次完整开发的关键环节。它们互相引用，形成一个闭环：
+
+```text
+写计划 → 执行计划 → (遇 bug) 系统化调试 → 请求审查 → 接收审查 → 完成前验证
+```
+
+| Skill | 作用 | 触发时机 |
+| ----- | ---- | -------- |
+| `writing-plans` | 把规格拆成 2–5 分钟一步的 TDD 任务，精确文件路径 + 完整代码，禁止占位符 | 动手写代码前 |
+| `executing-plans` | 按计划逐任务执行，每步验证，卡住就停不瞎猜 | 有了书面计划后 |
+| `systematic-debugging` | 四阶段根因调试 + 铁律"没找到根因不准改"，3 次修复失败→质疑架构 | 碰到任何 bug / 测试失败 |
+| `verification-before-completion` | 铁律"没跑过验证命令不准说完成"，附 claim→证据对照表 | 准备说"搞定/通过/修好了"之前 |
+| `requesting-code-review` | 派一个 reviewer 子 agent 审 git diff（coreview 的轻量单 agent 版） | 完成一个任务 / 合并前 |
+| `receiving-code-review` | 批判性评估审查意见，先核实再改，不盲从不表演性同意 | 收到审查反馈时 |
+
+**安装（一次性 junction 上全部 6 个）：**
+
+```bash
+python skills/install_workflow_skills.py            # 安装
+python skills/install_workflow_skills.py --dry-run  # 预览
+python skills/install_workflow_skills.py --uninstall # 卸载
+```
+
+和 coreview 一样用目录 junction（Windows 免管理员/开发者模式，POSIX 用 symlink），源码留在 repo，链接指回来。装完重启 Claude Code 即可被自动发现并按 description 触发。
+
+> **出处**：这 6 个 skill 改编自 [obra/superpowers](https://github.com/obra/superpowers)（MIT）。本包做了三处本地化：① 删掉原文里的角色扮演措辞，保留硬核纪律（铁律 / Gate / 红旗表）；② 把断链的 `superpowers:` 交叉引用改写为指向本包已有的 `/tdd`、`coreview` 等；③ 软化对未打包辅助文件的依赖。
 
 ## 权限预设
 

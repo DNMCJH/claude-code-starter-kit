@@ -19,7 +19,7 @@ VSCode                               Obsidian
 Shared Infrastructure
 ─────────────────────
 ├── 5 MCP servers (fetch, time, playwright, gemini-search, firecrawl)
-├── 5 custom skills (leetcode-review, paper-note, recording, structural-learning, coreview)
+├── 7 workflow skills (plan/execute/debug/verify/code-review loop + coreview dual-agent)
 ├── 7 slash commands (caveman, diagnose, grill-me, tdd, tidy, html-deck, pptx-design-supplement)
 ├── 3 safety hooks (bash guard, pre-write think, post-write syntax check)
 ├── Auto-memory system (persistent cross-session context)
@@ -32,13 +32,21 @@ Shared Infrastructure
 ├── CLAUDE.md                     # Project instructions template
 ├── global-settings.json          # Global config template (~/.claude/settings.json)
 ├── skills/
-│   └── coreview/                 # Dual-agent code review skill
-│       ├── SKILL.md              # Skill definition (triggers, protocol, templates)
-│       ├── scripts/
-│       │   ├── coreview_state.py # State CLI (init/claim/release/prune/critical/gate)
-│       │   └── install.py        # Cross-platform install (junction/symlink)
-│       └── references/
-│           └── protocol.md       # Detailed protocol spec
+│   ├── coreview/                 # Dual-agent code review skill
+│   │   ├── SKILL.md              # Skill definition (triggers, protocol, templates)
+│   │   ├── scripts/
+│   │   │   ├── coreview_state.py # State CLI (init/claim/release/prune/critical/gate)
+│   │   │   └── install.py        # Cross-platform install (junction/symlink)
+│   │   └── references/
+│   │       └── protocol.md       # Detailed protocol spec
+│   ├── writing-plans/            # Break a spec into task-by-task TDD plans
+│   ├── executing-plans/          # Execute a plan with verification checkpoints
+│   ├── systematic-debugging/     # Four-phase root-cause debugging
+│   ├── verification-before-completion/  # No "done" claim without fresh evidence
+│   ├── requesting-code-review/   # Dispatch a reviewer subagent over a git diff
+│   │   └── code-reviewer.md      # Reviewer prompt template
+│   ├── receiving-code-review/    # Evaluate review feedback critically
+│   └── install_workflow_skills.py # One-shot junction install for the 6 above
 └── .claude/
     ├── settings.json             # Project-level permissions + hooks
     └── scripts/
@@ -117,7 +125,7 @@ Key design decisions from real daily use:
 
 1. **Three-layer safety** — dangerous commands blocked at hook level (not just permissions), token waste caught before it burns context, syntax verified immediately after writes
 2. **MCP over shell** — playwright for browser testing, gemini for search, firecrawl for scraping. Keeps tool calls visible and auditable vs buried in bash
-3. **Skills for repeatable workflows** — leetcode review, paper notes, structural learning, recording. Each encapsulates a multi-step SOP that would otherwise require re-explaining every session
+3. **Skills for repeatable workflows** — a plan → execute → debug → verify → code-review loop, plus coreview dual-agent review. Each encapsulates a multi-step SOP that would otherwise require re-explaining every session
 4. **Slash commands for modes** — `/caveman` for token-saving terse mode, `/grill-me` for design interrogation, `/tdd` for test-first flow. Mode switches without losing context
 5. **Auto-memory for continuity** — cross-session persistent memory with typed categories (user/feedback/project/reference). Eliminates "remind me what we did last time"
 6. **Permission allowlist + deny** — broad dev commands pre-allowed to reduce prompt fatigue; specific dangerous tools (file_upload) explicitly denied
@@ -154,6 +162,35 @@ The agents communicate through you — after each round, one agent outputs a mes
 - Atomic JSON state writes (no torn files)
 
 See [SKILL.md](skills/coreview/SKILL.md) for the full protocol and [protocol.md](skills/coreview/references/protocol.md) for state machine details.
+
+## Workflow Skills — Plan / Execute / Debug / Verify / Review Loop
+
+`skills/` also contains 6 workflow skills covering the key stages of a development cycle. They cross-reference each other to form a loop:
+
+```text
+write plan → execute plan → (on bug) systematic debug → request review → receive review → verify before completion
+```
+
+| Skill | What it does | Triggers when |
+| ----- | ------------ | ------------- |
+| `writing-plans` | Breaks a spec into 2–5 minute TDD steps with exact file paths and complete code — no placeholders | Before touching code on a multi-step task |
+| `executing-plans` | Runs a plan task-by-task, verifies each step, stops to ask instead of guessing | You have a written plan |
+| `systematic-debugging` | Four-phase root-cause debugging; iron law "no fix without root cause", question the architecture after 3 failed fixes | Any bug or test failure |
+| `verification-before-completion` | Iron law "no completion claim without running the verification command", with a claim→evidence table | Before saying "done / passing / fixed" |
+| `requesting-code-review` | Dispatches a reviewer subagent over a git diff (the lightweight single-agent counterpart to coreview) | After a task / before merge |
+| `receiving-code-review` | Evaluate review feedback critically — verify before implementing, no performative agreement | When you get review feedback |
+
+**Install (junctions all 6 at once):**
+
+```bash
+python skills/install_workflow_skills.py            # install
+python skills/install_workflow_skills.py --dry-run  # preview
+python skills/install_workflow_skills.py --uninstall # remove
+```
+
+Same directory-junction approach as coreview (no admin/dev mode on Windows, symlink on POSIX). Source stays in the repo, the link points back. Restart Claude Code after installing — the skills are then auto-discovered and trigger by their `description`.
+
+> **Attribution:** these 6 skills are adapted from [obra/superpowers](https://github.com/obra/superpowers) (MIT). This kit makes three local changes: (1) stripped the role-play phrasing from the originals while keeping the hard discipline (iron laws, gate functions, red-flag tables); (2) rewrote the broken `superpowers:` cross-references to point at this kit's existing `/tdd`, `coreview`, etc.; (3) softened dependencies on supporting files that weren't packaged.
 
 ## Permission Presets
 
