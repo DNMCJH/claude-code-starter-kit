@@ -20,7 +20,7 @@ Shared Infrastructure
 ─────────────────────
 ├── 5 MCP servers (fetch, time, playwright, gemini-search, firecrawl)
 ├── 7 workflow skills (plan/execute/debug/verify/code-review loop + coreview dual-agent)
-├── 7 slash commands (caveman, diagnose, grill-me, tdd, tidy, html-deck, pptx-design-supplement)
+├── 9 slash commands (5 modes + html-deck + 3 design/format supplements)
 ├── 3 safety hooks (bash guard, pre-write think, post-write syntax check)
 ├── Auto-memory system (persistent cross-session context)
 └── Document skills plugin (anthropic-agent-skills marketplace)
@@ -47,6 +47,21 @@ Shared Infrastructure
 │   │   └── code-reviewer.md      # Reviewer prompt template
 │   ├── receiving-code-review/    # Evaluate review feedback critically
 │   └── install_workflow_skills.py # One-shot junction install for the 6 above
+├── commands/                    # 9 slash commands (modes + design/format)
+│   ├── caveman.md               # Terse token-saving response mode
+│   ├── diagnose.md              # Disciplined hard-bug diagnosis loop
+│   ├── grill-me.md              # Relentless design interrogation
+│   ├── tdd.md                   # Red-green-refactor TDD workflow
+│   ├── tidy.md                  # Post-task cleanup sweep
+│   ├── html-deck.md             # Single-file HTML swipe-deck generator
+│   ├── pptx-design-supplement.md # Swiss + Chinese typography for .pptx
+│   ├── docx-design-supplement.md # Chinese Word doc typography conventions
+│   ├── paper.md                 # IEEE / SCI academic paper format
+│   └── install_commands.py      # Copy commands + junction html-deck assets
+├── html-deck/                   # Assets for the html-deck command
+│   ├── assets/                  # template.html (Style A) + template-swiss.html (Style B)
+│   ├── references/              # layouts, themes, components, checklist
+│   └── scripts/validate-swiss-deck.mjs # Swiss layout-lock validator
 └── .claude/
     ├── settings.json             # Project-level permissions + hooks
     └── scripts/
@@ -191,6 +206,34 @@ python skills/install_workflow_skills.py --uninstall # remove
 Same directory-junction approach as coreview (no admin/dev mode on Windows, symlink on POSIX). Source stays in the repo, the link points back. Restart Claude Code after installing — the skills are then auto-discovered and trigger by their `description`.
 
 > **Attribution:** these 6 skills are adapted from [obra/superpowers](https://github.com/obra/superpowers) (MIT). This kit makes three local changes: (1) stripped the role-play phrasing from the originals while keeping the hard discipline (iron laws, gate functions, red-flag tables); (2) rewrote the broken `superpowers:` cross-references to point at this kit's existing `/tdd`, `coreview`, etc.; (3) softened dependencies on supporting files that weren't packaged.
+
+## Slash Commands — Modes, Decks & Format Supplements
+
+`commands/` holds 9 slash commands. Five are workflow *modes* you toggle mid-session; the rest generate or constrain document output.
+
+| Command | What it does | Triggers when |
+| ------- | ------------ | ------------- |
+| `/caveman` | Terse "smart caveman" mode — drops filler, keeps all technical substance | You want to save tokens on a long task |
+| `/diagnose` | Six-phase hard-bug loop: build a feedback loop → reproduce → hypothesize → instrument → fix → cleanup | A bug isn't obvious or is flaky |
+| `/grill-me` | Interrogates every branch of a plan, one question at a time, until shared understanding | Before a non-trivial feature/design you haven't thought through |
+| `/tdd` | Red-green-refactor, one vertical slice at a time (no horizontal test-then-impl) | Adding a feature or fixing a bug with tests |
+| `/tidy` | Post-task cleanup sweep: debug residue, dead code, structure, deps, git hygiene | A debug session / refactor / multi-file change just finished |
+| `/html-deck` | Generates single-file HTML horizontal-swipe presentation decks (two visual systems: Editorial Magazine, Swiss International) | You want a browser-native slide deck, no build step |
+| `/pptx-design-supplement` | Swiss style + Chinese typography principles for real `.pptx` (pairs with the built-in `pptx` skill) | Building a `.pptx` that needs high-end minimalist design |
+| `/docx-design-supplement` | Chinese Word document conventions: centered H1, centered table headers, 黑体 headings, 等线/Times/Consolas fonts | Writing a Chinese business/report `.docx` |
+| `/paper` | IEEE / SCI strict-format academic paper writing (IEEEtran, booktabs, BibTeX, IMRaD) | Drafting a paper for an IEEE or SCI venue |
+
+**Install (copies the commands, junctions the html-deck assets):**
+
+```bash
+python commands/install_commands.py            # install all
+python commands/install_commands.py --dry-run  # preview
+python commands/install_commands.py --uninstall # remove
+```
+
+Command `.md` files are copied into `~/.claude/commands/`. The `html-deck/` asset tree (templates + references + validator, ~320 KB) is linked to `~/.claude/html-deck/` — the absolute path the `html-deck` command reads from. Restart Claude Code after installing so it rediscovers the commands.
+
+> **Attribution:** `html-deck`, `pptx-design-supplement`, and the design half of `docx`/`paper` draw on [guizang-ppt-skill](https://github.com/op7418/guizang-ppt-skill) (MIT). For a full academic paper-writing skill stack, see the companion repo [minimal-paper-skills](https://github.com/DNMCJH/minimal-paper-skills).
 
 ## Permission Presets
 

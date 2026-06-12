@@ -20,7 +20,7 @@ VSCode                                Obsidian
 ────────────
 ├── 5 个 MCP 服务器（fetch, time, playwright, gemini-search, firecrawl）
 ├── 7 个工作流 skills（计划/执行/调试/验证/代码审查闭环 + coreview 双 agent 互审）
-├── 7 个斜杠命令（caveman, diagnose, grill-me, tdd, tidy, html-deck, pptx-design-supplement）
+├── 9 个斜杠命令（5 个模式 + html-deck + 3 个设计/格式补充）
 ├── 3 个安全 hooks（bash 防护、写前思考、写后语法检查）
 ├── 自动记忆系统（跨会话持久化上下文）
 └── Document skills 插件（anthropic-agent-skills 市场）
@@ -47,6 +47,21 @@ VSCode                                Obsidian
 │   │   └── code-reviewer.md      # reviewer prompt 模板
 │   ├── receiving-code-review/    # 批判性评估审查意见，不盲从
 │   └── install_workflow_skills.py # 一键 junction 安装上面 6 个工作流 skill
+├── commands/                    # 9 个斜杠命令（模式 + 设计/格式）
+│   ├── caveman.md               # 简洁省 token 的响应模式
+│   ├── diagnose.md              # 硬骨头 bug 的纪律化诊断闭环
+│   ├── grill-me.md              # 设计方案逐分支拷问
+│   ├── tdd.md                   # 红-绿-重构 TDD 工作流
+│   ├── tidy.md                  # 任务收尾清理扫描
+│   ├── html-deck.md             # 单文件 HTML 滑动演示生成器
+│   ├── pptx-design-supplement.md # .pptx 的瑞士风 + 中文排版
+│   ├── docx-design-supplement.md # 中文 Word 文档排版规范
+│   ├── paper.md                 # IEEE / SCI 学术论文格式
+│   └── install_commands.py      # 复制命令 + junction html-deck 资产
+├── html-deck/                   # html-deck 命令的资产
+│   ├── assets/                  # template.html（A 风格）+ template-swiss.html（B 风格）
+│   ├── references/              # 布局、主题、组件、检查清单
+│   └── scripts/validate-swiss-deck.mjs # 瑞士风布局锁校验器
 └── .claude/
     ├── settings.json             # 项目级权限 + hooks 配置
     └── scripts/
@@ -191,6 +206,34 @@ python skills/install_workflow_skills.py --uninstall # 卸载
 和 coreview 一样用目录 junction（Windows 免管理员/开发者模式，POSIX 用 symlink），源码留在 repo，链接指回来。装完重启 Claude Code 即可被自动发现并按 description 触发。
 
 > **出处**：这 6 个 skill 改编自 [obra/superpowers](https://github.com/obra/superpowers)（MIT）。本包做了三处本地化：① 删掉原文里的角色扮演措辞，保留硬核纪律（铁律 / Gate / 红旗表）；② 把断链的 `superpowers:` 交叉引用改写为指向本包已有的 `/tdd`、`coreview` 等；③ 软化对未打包辅助文件的依赖。
+
+## 斜杠命令 — 模式、演示稿与格式补充
+
+`commands/` 下有 9 个斜杠命令。5 个是会话中途切换的工作流*模式*,其余用于生成或约束文档输出。
+
+| 命令 | 作用 | 触发时机 |
+| ---- | ---- | -------- |
+| `/caveman` | 简洁"聪明穴居人"模式 — 砍掉废话,保留全部技术实质 | 长任务想省 token 时 |
+| `/diagnose` | 六阶段硬 bug 闭环:建反馈回路 → 复现 → 假设 → 埋点 → 修复 → 清理 | bug 不明显或时灵时不灵 |
+| `/grill-me` | 逐分支拷问方案,一次一个问题,直到达成共识 | 动手做没想清楚的非琐碎功能/设计前 |
+| `/tdd` | 红-绿-重构,一次一个纵切片(不先写完所有测试再写实现) | 加功能或修 bug 且有测试 |
+| `/tidy` | 任务收尾清理扫描:调试残留、死代码、结构、依赖、git 卫生 | 调试/重构/多文件改动刚结束 |
+| `/html-deck` | 生成单文件 HTML 横向滑动演示稿(两套视觉系统:杂志风、瑞士风) | 想要浏览器原生幻灯片、免构建 |
+| `/pptx-design-supplement` | 真 `.pptx` 的瑞士风 + 中文排版原则(配合内置 `pptx` skill) | 做需要高端极简设计的 `.pptx` |
+| `/docx-design-supplement` | 中文 Word 文档规范:一级标题居中、表格行列标题居中、标题黑体、等线/Times/Consolas | 写中文商务/报告 `.docx` |
+| `/paper` | IEEE / SCI 严格格式学术论文写作(IEEEtran、booktabs、BibTeX、IMRaD) | 给 IEEE 或 SCI 投稿写论文 |
+
+**安装(复制命令,junction html-deck 资产):**
+
+```bash
+python commands/install_commands.py            # 安装全部
+python commands/install_commands.py --dry-run  # 预览
+python commands/install_commands.py --uninstall # 卸载
+```
+
+命令 `.md` 文件被复制到 `~/.claude/commands/`。`html-deck/` 资产树(模板 + references + 校验器,约 320 KB)被链接到 `~/.claude/html-deck/` —— 即 `html-deck` 命令读取的绝对路径。装完重启 Claude Code 以便重新发现命令。
+
+> **出处**:`html-deck`、`pptx-design-supplement` 以及 `docx`/`paper` 的设计部分借鉴自 [guizang-ppt-skill](https://github.com/op7418/guizang-ppt-skill)(MIT)。完整的学术论文写作 skill 栈见配套仓库 [minimal-paper-skills](https://github.com/DNMCJH/minimal-paper-skills)。
 
 ## 权限预设
 
