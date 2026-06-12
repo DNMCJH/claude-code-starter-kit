@@ -95,3 +95,10 @@ All in `~/.claude/html-deck/references/`:
 - `themes-swiss.md` — Style B: 4 accent presets
 - `swiss-layout-lock.md` — Layout registration rules
 - `image-prompts.md` — Image generation guidance
+- `design-systems-index.md` — 68 brand aesthetics quick-reference (pick a visual direction beyond the two built-in styles)
+
+## Borrowing a Visual Direction
+
+The two built-in styles (Magazine / Swiss) are the safe defaults. To break style monotony, consult `references/design-systems-index.md` — 68 named brand aesthetics (Linear minimal, ElevenLabs dark cinematic, Notion warm editorial, etc.). Use one as a *palette + type direction*, then express it through the existing template structure. Do not invent new layout skeletons; map the borrowed aesthetic onto registered layouts.
+
+For richer HTML/landing-page work (not decks), the junctioned taste skills (`high-end-visual-design`, `minimalist-ui`, `industrial-brutalist-ui`) carry deeper component-level rules and trigger automatically by description.
